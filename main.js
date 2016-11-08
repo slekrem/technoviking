@@ -1,7 +1,18 @@
-var pcap = require('pcap'),
-    pcap_session = pcap.createSession("en1", "");
+var pcap = require("pcap"),
+    tcp_tracker = new pcap.TCPTracker(),
+    pcap_session = pcap.createSession("en1", ""),
+    matcher = /safari/i;
+
+console.log("Listening on " + pcap_session.device_name);
+
+tcp_tracker.on('session', function (session) {
+  console.log("Start of session between " + session.src_name + " and " + session.dst_name);
+  session.on('end', function (session) {
+      console.log("End of TCP session between " + session.src_name + " and " + session.dst_name);
+  });
+});
 
 pcap_session.on('packet', function (raw_packet) {
-  // do some stuff with a raw packet
-  console.log(raw_packet)
+    var packet = pcap.decode.packet(raw_packet);
+    tcp_tracker.track_packet(packet);
 });
