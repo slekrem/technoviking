@@ -36,7 +36,8 @@ pcap_session.on('packet', function (raw_packet) {
 
   // handle attack
   var diff = Date.now() - lastPacketTime;
-  if (diff == 0) {
+  //console.log(diff);
+  if (diff < 10) {
     ++diffCount
   } else {
     diffCount = 0;
