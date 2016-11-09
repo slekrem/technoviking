@@ -1,18 +1,47 @@
 var pcap = require("pcap"),
     tcp_tracker = new pcap.TCPTracker(),
-    pcap_session = pcap.createSession("en1", ""),
-    matcher = /safari/i;
+    pcap_session = pcap.createSession("en1", "arp");
 
-console.log("Listening on " + pcap_session.device_name);
+var getIPAddressAsStringFromArray = function(array) {
+  return array[0] + '.' + array[1] + '.' + array[2] + '.' + array[3];
+}
 
-tcp_tracker.on('session', function (session) {
-  console.log("Start of session between " + session.src_name + " and " + session.dst_name);
-  session.on('end', function (session) {
-      console.log("End of TCP session between " + session.src_name + " and " + session.dst_name);
-  });
-});
+var handleAlarm = function() {
+  console.log("ALARM");
+  console.log("\007");
+}
 
+var hosts = [ ];
+var lastPacketTime = Date.now();
+var diffCount;
+console.log(new Date(lastPacketTime));
 pcap_session.on('packet', function (raw_packet) {
-    var packet = pcap.decode.packet(raw_packet);
-    tcp_tracker.track_packet(packet);
+  // bereite vor ...
+  var packet = pcap.decode.packet(raw_packet),
+      senderIp = getIPAddressAsStringFromArray(packet.payload.payload.sender_pa.addr),
+      targetIp = getIPAddressAsStringFromArray(packet.payload.payload.target_pa.addr);
+
+  // handle source ip
+  var hostsWithSameSenderIp = hosts.filter(function(host) {
+    if (host.ip == senderIp)
+      return true;
+    return false;
+  });
+  if (hostsWithSameSenderIp.length == 0) {
+    hosts.push({
+      ip: senderIp
+    });
+    //console.log(hosts[hosts.length -1]);
+  }
+
+  // handle attack
+  var diff = Date.now() - lastPacketTime;
+  if (diff == 0) {
+    ++diffCount
+  } else {
+    diffCount = 0;
+  }
+  if (diffCount == 5)
+    handleAlarm();
+  lastPacketTime = Date.now();
 });
